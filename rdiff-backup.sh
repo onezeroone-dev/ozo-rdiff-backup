@@ -21,9 +21,9 @@
 # HOST_INCLUDES: Comma-separated list of host-specific directory inclusions
 # HOST_EXCLUDES: Comma-separated list of host-specific directory exclusions
 #
-# For example, /etc/rdiff-backup/onezeroone.dev.conf:
+# For example, /etc/rdiff-backup.conf.d/rdiff-host.example.com.conf:
 #
-# HOST="onezeroone.dev"
+# HOST="rdiff-host.example.com"
 # AGE="180"
 # SSHPORT="22"
 # HOST_INCLUDES=""
@@ -32,7 +32,7 @@
 # Finally, create a cron job that executes an rdiff-backup increment on your
 # desired interval e.g. /etc/cron.d/rdiff-backup containing:
 #
-# 00 04  *  *  * root /usr/local/sbin/rdiff-backup.sh /etc/rdiff-backup.conf.d/onezeroone.dev.conf
+# 00 04  *  *  * root /usr/local/sbin/rdiff-backup.sh /etc/rdiff-backup.conf.d/rdiff-host.example.com.conf
 
 # === PREREQUISITE REMOTE SETUP ===============================================
 # Install rdiff-backup:
@@ -82,7 +82,7 @@ else
 	# Configuration file was not specified
 	echo "A configuration file was not specified. Usage:"
 	echo ""
-	echo "${0} /etc/rdiff-backup.conf.d/[HOSTNAME].conf"
+	echo "${0} ${CONF_DIR}/[HOSTNAME].conf"
 	echo ""
 	exit 1
 fi
