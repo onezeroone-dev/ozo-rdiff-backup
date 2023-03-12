@@ -1,53 +1,11 @@
 #!/bin/bash
 
-# This script automates the use of rdiff-backup to perform incremental backups
-# of remote linux systems over SSH. It will mount and unmount a dedicated
-# volume for storing rdiff-backup increments.
-
-# Place this script in /usr/local/sbin.  It expects a single command-line
-# argument specifying the path to a job configuration file.
-
-# Please visit https://onezeroone.dev/automating-rdiff-backup-with-bash for
-# more information.
-
-# === PREREQUISITE LOCAL SETUP ================================================
-# ssh-copy-id -i root@[HOSTNAME]
-# Create a directory for configuration files e.g., /etc/rdiff-backup.conf.d
-# Create a configuration file for the remote host containing:
-# 
-# HOST: Fully qualified domain name for the remote linux host.
-# AGE: How long to keep increments in days
-# SSHPORT: SSH port to use to establish a connection to the remote host
-# HOST_INCLUDES: Comma-separated list of host-specific directory inclusions
-# HOST_EXCLUDES: Comma-separated list of host-specific directory exclusions
-#
-# For example, /etc/rdiff-backup.conf.d/rdiff-host.example.com.conf:
-#
-# HOST="rdiff-host.example.com"
-# AGE="180"
-# SSHPORT="22"
-# HOST_INCLUDES=""
-# HOST_EXCLUDES=""
-#
-# Finally, create a cron job that executes an rdiff-backup increment on your
-# desired interval e.g. /etc/cron.d/rdiff-backup containing:
-#
-# 00 04  *  *  * root /usr/local/sbin/rdiff-backup.sh /etc/rdiff-backup.conf.d/rdiff-host.example.com.conf
-
-# === PREREQUISITE REMOTE SETUP ===============================================
-# Install rdiff-backup:
-# - RedHat/CentOS: yum install rdiff-backup
-# - Debian/Ubuntu: apt-get install rdiff-backup
-# Edit /root/.ssh/authorized_keys and prepend the shared key with:
-# command="/usr/bin/rdiff-backup --server --restrict-read-only /"
-
-# === USER DEFINABLE VARIABLES ================================================
-# UUID of the formatted rdiff-backup volume for storing increments which can be
-# determined by executing 'blkid' in a root shell.
+# User-definable variables
+# UUID of the rdiff-backup volume
 UUID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-# The mount point for the rdiff-backup volume
+# Mount point for the rdiff-backup volume
 MOUNTPOINT="/srv/rdiff"
-# Location for configuration files
+# Location of configuration files
 CONF_DIR="/etc/rdiff-backup.conf.d"
 # Default directories to include for all hosts
 DEF_INCLUDES="/etc,/home,/root,/usr/local,/var"
