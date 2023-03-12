@@ -34,6 +34,7 @@ function ozo-mount-uuid {
         LEVEL="err" MESSAGE="Device ${LUUID} is already mounted to ${LMOUNTPOINT}." ozo-log
         RETURN=1
       elif mount | grep "$(readlink -f /dev/disk/by-uuid/${LUUID})"
+      then
         # device is mounted but not to LMOUNTPOINT; log
         LEVEL="err" MESSAGE="Found ${LUUID} mounted to a directory other than ${LMOUNTPOINT}." ozo-log
         RETURN=1
@@ -42,10 +43,10 @@ function ozo-mount-uuid {
         if [[ -d "${LMOUNTPOINT}" ]]
         then
           # mountpoint exists; attempt to mount
-          if mount ${LUUID} ${LMOUNTPOINT}
+          if mount UUID=${LUUID} "${LMOUNTPOINT}"
           then
             # mount succeeded; attempt to create backup and restore directories
-            if mkdir -p "${LMOUNTPOINT}/${LBACKUP_DIRNAME}","${LMOUNTPOINT}/${LRESTORE_DIRNAME}"
+            if mkdir -p "${LMOUNTPOINT}/${LBACKUP_DIRNAME}" "${LMOUNTPOINT}/${LRESTORE_DIRNAME}"
             then
               # created backup and restore directories
               LEVEL="info" MESSAGE="Created ${LMOUNTPOINT}/${LBACKUP_DIRNAME} and ${LMOUNTPOINT}/${LRESTORE_DIRNAME}." ozo-log
@@ -100,17 +101,26 @@ function ozo-umount-uuid {
 }
 
 function ozo-fsck-uuid {
-  ### Performs an fsck of the Rdiff-Backup volume
-  ### Returns 0 (TRUE) if successful and 1 (FALSE) if not
+  ### Checks if it's fsck day and if yes, performs an fsck of the Rdiff-Backup volume
+  ### Returns 0 (TRUE) if it's not fsck day OR if it is and it's successful and 1 (FALSE) if it's fsck day but fails
   local RETURN=0
-  if ozo-umount-uuid
+  # check if it's fsck day
+  if [[ "$( date +%u )" == "${LFSCK_DAY}" ]]
   then
-    if ! /sbin/fsck UUID=${LUUID}
+    # its fsck day, make sure the volume is unmounted
+    if ozo-umount-uuid
     then
+      # volume is unmounted, attempt to fsck
+      if ! /sbin/fsck UUID=${LUUID}
+      then
+        # fsck failed
+        RETURN=1
+      fi
+    else
+      # volume did not unmount
+      LEVEL="err" MESSAGE="Volume ${LUUID} is not unmounted; unable to fsck." ozo-log
       RETURN=1
     fi
-  else
-    LEVEL="err" MESSAGE="Volume ${LUUID} cannot be unmounted; unable to fsck." ozo-log
   fi
   return ${RETURN}
 }
@@ -129,7 +139,7 @@ function ozo-validate-configuration {
     fi
   done
   # check that at least one job configuration file has been specified
-  if [[ $(ls ${LCONF_DIR}) < 1 ]]
+  if [[ "$(ls ${LCONF_DIR})" < "1" ]]
   then
     LEVEL="err" MESSAGE="No job configuration files found in ${LCONF_DIR}." ozo-log
     RETURN=1
@@ -142,27 +152,14 @@ function ozo-validate-configuration {
     then
       # device could not be unmounted
       RETURN=1
+    fi
   else
     RETURN=1
   fi
-  # check that the ssh binary exists
-  if which ssh
+  # check that rdiff-backup is installed
+  if ! which rdiff-backup
   then
-    # check that SSH with keys is possible
-    if ssh -p ${RSSHPORT} -o BatchMode=yes ${RHOSTUSER}@${RHOSTFQDN} true
-    then
-      # check that the remote system has zfs
-      if ! ssh -p ${RSSHPORT} ${RUSER}@${RHOSTFQDN} which rdiff-backup
-      then
-        LEVEL="err" MESSAGE="Remote host ${RHOSTFQDN} is missing Rdiff-backup." ozo-log
-        RETURN=1
-      fi
-    else
-      RETURN=1
-      LEVEL="err" MESSAGE="Unable to SSH to ${RHOSTFQDN} with keys." ozo-log
-    fi  
-  else
-    LEVEL="err" MESSAGE="Local system is missing SSH." ozo-log
+    LEVEL="err" MESSAGE="Rdiff-Backup System is missing rdiff-backup". ozo-log
     RETURN=1
   fi
   return ${RETURN}
@@ -187,20 +184,25 @@ function ozo-validate-job {
     RSSHPORT=22
   fi
   # job specific (derived) variables
-  # create the "inclusions" string from $RDEF_INCLUDES and (if set) $RHOST_INCLUDES
-  INCLUDES="--include ${RDEF_INCLUDES//,/ --include }"
-  if [ -n "${RHOST_INCLUDES}" ]
+  # concatenate RDEF_INCLUDES and (if set) RHOST_INCLUDES
+  if [[ -n "${RHOST_INCLUDES}" ]]
   then
-    INCLUDES="${INCLUDES} --include ${RHOST_INCLUDES//,/ --include }"
+    JOB_INCLUDES="${RDEF_INCLUDES},${RHOST_INCLUDES}"
+  else
+    JOB_INCLUDES="${RDEF_INCLUDES}"
   fi
-  # create the "exclusions" string from $RDEF_EXCLUDES and (if set) $RHOST_EXCLUDES
-  EXCLUDES="--exclude ${RDEF_EXCLUDES//,/ --exclude }"
-  if [ -n "${RHOST_EXCLUDES}" ]
+  # concatenate RDEF_EXCLUDES, LMOUNTPOINT and (if set) RHOST_EXCLUDES
+  if [[ -n "${RHOST_EXCLUDES}" ]]
   then
-    EXCLUDES="${EXCLUDES} --exclude ${RHOST_EXCLUDES//,/ --exclude }"
+    JOB_EXCLUDES="${RDEF_EXCLUDES},${LMOUNTPOINT},${RHOST_EXCLUDES}"
+  else
+    JOB_EXCLUDES="${RDEF_EXCLUDES},${LMOUNTPOINT}"
   fi
-  # exclude the rdiff volume mount point (this handles the case where the Remote System is the Rdiff-Backup System)
-  EXCLUDES="${EXCLUDES},${LMOUNTPOINT}"
+  # parse commas into rdiff-backup include/exclude flags
+  echo "${JOB_INCLUDES}"
+  echo "${JOB_EXCLUDES}"
+  JOB_INCLUDES="--include \"${JOB_INCLUDES//,/\" --include \"}\""
+  JOB_EXCLUDES="--exclude \"${JOB_EXCLUDES//,/\" --exclude \"}\""
   # directory for storing increments for this job
   RHOSTFQDN_INCREMENTS_DIR="${LMOUNTPOINT}/${LBACKUP_DIRNAME}/${RHOSTFQDN}"
   # attempt to create job increments directory
@@ -209,6 +211,27 @@ function ozo-validate-job {
     LEVEL="err" MESSAGE="Unable to create ${RHOSTFQDN_INCREMENTS_DIR} to store increments for ${RHOSTFQDN}." ozo-log
     RETURN=1
   fi
+  # check that the ssh binary exists
+  if which ssh
+  then
+    # check that SSH with keys is possible
+    if ssh -p ${RSSHPORT} -o BatchMode=yes ${RHOSTUSER}@${RHOSTFQDN} true
+    then
+      # check that the remote system has rdiff-backup
+      if ! ssh -p ${RSSHPORT} ${RHOSTUSER}@${RHOSTFQDN} which rdiff-backup
+      then
+        LEVEL="err" MESSAGE="Remote host ${RHOSTFQDN} is missing rdiff-backup." ozo-log
+        RETURN=1
+      fi
+    else
+      RETURN=1
+      LEVEL="err" MESSAGE="Unable to SSH to ${RHOSTFQDN} with keys." ozo-log
+    fi  
+  else
+    LEVEL="err" MESSAGE="Local system is missing SSH." ozo-log
+    RETURN=1
+  fi
+  return ${RETURN}
 }
 
 function ozo-rdiff-backup {
@@ -216,7 +239,8 @@ function ozo-rdiff-backup {
   ### Returns 0 (TRUE) if the job is successful and 1 (FALSE) if there are any errors
   local RETURN=0
   LEVEL="info" MESSAGE="Starting Rdiff-Backup job." ozo-log
-  if $(/usr/bin/rdiff-backup --verbosity 0 --create-full-path --remote-schema "/usr/bin/ssh -p ${SSHPORT} -C  %s /usr/bin/rdiff-backup --server --restrict-read-only /" ${INCLUDES} ${EXCLUDES} root@${HOST}::/ ${RHOSTFQDN_INCREMENTS_DIR})
+  echo "Attempting rdiff-backup --verbosity 0 --remote-schema "ssh -C -p ${RSSHPORT} {h} rdiff-backup server --restrict-mode read-only" backup --create-full-path --exclude-device-files ${JOB_INCLUDES} ${JOB_EXCLUDES} ${RHOSTUSER}@${RHOSTFQDN}::/ ${RHOSTFQDN_INCREMENTS_DIR}"
+  if rdiff-backup --verbosity 0 --remote-schema "ssh -C -p ${RSSHPORT} {h} rdiff-backup server --restrict-mode read-only" backup --create-full-path --exclude-device-files ${JOB_INCLUDES} ${JOB_EXCLUDES} ${RHOSTUSER}@${RHOSTFQDN}::/ ${RHOSTFQDN_INCREMENTS_DIR}
   then
     # rdiff-backup succeeded; log
     LEVEL="info" MESSAGE="Rdiff-Backup job finished with success." ozo-log
@@ -225,6 +249,7 @@ function ozo-rdiff-backup {
     LEVEL="err" MESSAGE="Rdiff-Backup job failed." ozo-log
     RETURN=1
   fi   
+  return ${RETURN}
 }
 
 function ozo-rdiff-maintenance {
@@ -244,10 +269,7 @@ function ozo-rdiff-maintenance {
 }
 
 function ozo-program-loop {
-  ### Validates the script configuration
-  ### Validates and runs jobs
-  ### Performs increments maintenance
-  ### Performs filesystem maintenance
+  ### Validates the script configuration, validates and runs jobs, performs increments and filesystem maintenance
   ### Returns 0 (TRUE) if the configuration validates and all jobs run and 1 (FALSE) if the configuration does not validate or any job fails
   local RETURN=0
   local CONFIGURATION="/etc/rdiff-backup.conf"
@@ -263,8 +285,9 @@ function ozo-program-loop {
       if ozo-mount-uuid
       then
         # UUID mounted, iterate through the jobs
-        for JOB in $(ls "${LCONF_DIR}/*conf")
+        for CONF in "$(ls ${LCONF_DIR}/*conf)"
         do
+          source ${CONF}
           # validate the job
           if ozo-validate-job
           then
@@ -289,15 +312,11 @@ function ozo-program-loop {
         # iteration complete; attempt to umount UUID
         if ozo-umount-uuid
         then
-          # UUID unmounted; check if it's fsck day
-          if [[ "$( date +%u )" == "${LFSCK_DAY}" ]]
+          # UUID unmounted; fsck
+          if ! ozo-fsck-uuid
           then
-            # it's fsck day!; attempt to fsck
-            if ! ozo-fsck-uuid
-            then
-              # fsck failed
-              RETURN=1
-            fi
+            # fsck failed
+            RETURN=1
           fi
         else
           # umount UUID failed
@@ -319,6 +338,8 @@ function ozo-program-loop {
 }
 
 # MAIN
+EXIT=0
+
 LEVEL="info" MESSAGE="Rdiff-Backup starting." ozo-log
 if ozo-program-loop
 then
@@ -327,4 +348,7 @@ then
 else
   # run failed one or more jobs
   LEVEL="err" MESSAGE="Rdiff-Backup finished with errors." ozo-log
+  EXIT=1
 fi
+
+exit ${EXIT}

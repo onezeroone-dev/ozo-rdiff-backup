@@ -80,4 +80,4 @@ On the Remote System(s) (as `root`), install `rdiff-backup`.
 
 Edit `/root/.ssh/authorized_keys` and prepend the shared key with:
 
-`command="/usr/bin/rdiff-backup --server --restrict-read-only /"`
+`command="rdiff-backup server --restrict-mode read-only"`
