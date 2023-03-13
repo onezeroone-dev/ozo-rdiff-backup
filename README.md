@@ -4,7 +4,7 @@ This script automates the use of rdiff-backup to perform incremental backups of 
 
 It runs with no arguments. When executed, it iterates through the *CONF* files in `LCONF_DIR` (`/etc/rdiff-backup.conf.d`) and performs the configured rdiff-backup job.
 
-Please visit https://onezeroone.dev/automating-rdiff-backup-with-bash for more information.
+Please visit https://onezeroone.dev to learn more about this script and my other work.
 
 ## Setup and Configuration
 
