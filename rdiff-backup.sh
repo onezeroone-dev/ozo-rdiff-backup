@@ -343,7 +343,7 @@ function ozo-program-loop {
 EXIT=0
 
 LEVEL="info" MESSAGE="Rdiff-Backup starting." ozo-log
-if ozo-program-loop
+if ozo-program-loop > /dev/null 2&>1
 then
   # run was successful
   LEVEL="info" MESSAGE="Rdiff-Backup finished with success." ozo-log
