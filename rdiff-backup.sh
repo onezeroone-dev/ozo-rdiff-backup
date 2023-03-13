@@ -199,10 +199,8 @@ function ozo-validate-job {
     JOB_EXCLUDES="${RDEF_EXCLUDES},${LMOUNTPOINT}"
   fi
   # parse commas into rdiff-backup include/exclude flags
-  echo "${JOB_INCLUDES}"
-  echo "${JOB_EXCLUDES}"
-  JOB_INCLUDES="--include \"${JOB_INCLUDES//,/\" --include \"}\""
-  JOB_EXCLUDES="--exclude \"${JOB_EXCLUDES//,/\" --exclude \"}\""
+  JOB_INCLUDES="${JOB_INCLUDES//,/ --include }"
+  JOB_EXCLUDES="${JOB_EXCLUDES//,/ --exclude }"
   # directory for storing increments for this job
   RHOSTFQDN_INCREMENTS_DIR="${LMOUNTPOINT}/${LBACKUP_DIRNAME}/${RHOSTFQDN}"
   # attempt to create job increments directory
@@ -239,8 +237,7 @@ function ozo-rdiff-backup {
   ### Returns 0 (TRUE) if the job is successful and 1 (FALSE) if there are any errors
   local RETURN=0
   LEVEL="info" MESSAGE="Starting Rdiff-Backup job." ozo-log
-  echo "Attempting rdiff-backup --verbosity 0 --remote-schema "ssh -C -p ${RSSHPORT} {h} rdiff-backup server --restrict-mode read-only" backup --create-full-path --exclude-device-files ${JOB_INCLUDES} ${JOB_EXCLUDES} ${RHOSTUSER}@${RHOSTFQDN}::/ ${RHOSTFQDN_INCREMENTS_DIR}"
-  if rdiff-backup --verbosity 0 --remote-schema "ssh -C -p ${RSSHPORT} {h} rdiff-backup server --restrict-mode read-only" backup --create-full-path --exclude-device-files ${JOB_INCLUDES} ${JOB_EXCLUDES} ${RHOSTUSER}@${RHOSTFQDN}::/ ${RHOSTFQDN_INCREMENTS_DIR}
+  if rdiff-backup -v 0 --remote-schema "ssh -C -p ${RSSHPORT} {h} rdiff-backup server --restrict-mode read-only" backup --create-full-path --include ${JOB_INCLUDES} --exclude ${JOB_EXCLUDES} ${RHOSTUSER}@${RHOSTFQDN}::/ ${RHOSTFQDN_INCREMENTS_DIR}
   then
     # rdiff-backup succeeded; log
     LEVEL="info" MESSAGE="Rdiff-Backup job finished with success." ozo-log
@@ -258,12 +255,17 @@ function ozo-rdiff-maintenance {
   local RETURN=0
   # attempt to remove old increments
   LEVEL="info" MESSAGE="Performing maintenance on increments for ${RHOSTFQDN}." ozo-log
-  if /usr/bin/rdiff-backup --force --remove-older-than ${RAGE}D ${RHOSTFQDN_INCREMENTS_DIR}
+  if [[ "$(rdiff-backup list increments ${RHOSTFQDN_INCREMENTS_DIR} | head -n -1 | tail -n -1 | wc -l)" > "${RAGE}" ]]
   then
-    LEVEL="info" MESSAGE="Successfully removed increments older than ${RAGE} days for ${RHOSTFQDN}." ozo-log
+    if /usr/bin/rdiff-backup --force --remove-older-than ${RAGE}D ${RHOSTFQDN_INCREMENTS_DIR}
+    then
+      LEVEL="info" MESSAGE="Successfully removed increments older than ${RAGE} days for ${RHOSTFQDN}." ozo-log
+    else
+      LEVEL="err" MESSAGE="Unable to remove increments older than ${RAGE} days for ${RHOSTFQDN}." ozo-log
+      RETURN=1
+    fi
   else
-    LEVEL="err" MESSAGE="Unable to remove increments older than ${RAGE} days for ${RHOSTFQDN}." ozo-log
-    RETURN=1
+    LEVEL="warning" MESSAGE="Found fewer than ${RAGE} increments in ${RHOSTFQDN_INCREMENTS_DIR}, skipping maintenance". ozo-log
   fi
   return ${RETURN}
 }
