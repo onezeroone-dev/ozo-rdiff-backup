@@ -257,7 +257,7 @@ function ozo-rdiff-maintenance {
   LEVEL="info" MESSAGE="Performing maintenance on increments for ${RHOSTFQDN}." ozo-log
   if [[ "$(rdiff-backup list increments ${RHOSTFQDN_INCREMENTS_DIR} | head -n -1 | tail -n -1 | wc -l)" > "${RAGE}" ]]
   then
-    if /usr/bin/rdiff-backup --force --remove-older-than ${RAGE}D ${RHOSTFQDN_INCREMENTS_DIR}
+    if rdiff-backup remove increments --force --older-than ${RAGE}D ${RHOSTFQDN_INCREMENTS_DIR}
     then
       LEVEL="info" MESSAGE="Successfully removed increments older than ${RAGE} days for ${RHOSTFQDN}." ozo-log
     else
