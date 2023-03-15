@@ -194,9 +194,9 @@ function ozo-validate-job {
   # concatenate RDEF_EXCLUDES, LMOUNTPOINT and (if set) RHOST_EXCLUDES
   if [[ -n "${RHOST_EXCLUDES}" ]]
   then
-    JOB_EXCLUDES="${RDEF_EXCLUDES},${LMOUNTPOINT},${RHOST_EXCLUDES}"
+    JOB_EXCLUDES="${RDEF_EXCLUDES},${RHOST_EXCLUDES}"
   else
-    JOB_EXCLUDES="${RDEF_EXCLUDES},${LMOUNTPOINT}"
+    JOB_EXCLUDES="${RDEF_EXCLUDES}"
   fi
   # parse commas into rdiff-backup include/exclude flags
   JOB_INCLUDES="${JOB_INCLUDES//,/ --include }"
@@ -237,7 +237,7 @@ function ozo-rdiff-backup {
   ### Returns 0 (TRUE) if the job is successful and 1 (FALSE) if there are any errors
   local RETURN=0
   LEVEL="info" MESSAGE="Starting Rdiff-Backup job." ozo-log
-  if rdiff-backup -v 0 --remote-schema "ssh -C -p ${RSSHPORT} {h} rdiff-backup server --restrict-mode read-only" backup --create-full-path --include ${JOB_INCLUDES} --exclude ${JOB_EXCLUDES} ${RHOSTUSER}@${RHOSTFQDN}::/ ${RHOSTFQDN_INCREMENTS_DIR}
+  if rdiff-backup -v 0 --remote-schema "ssh -C -p ${RSSHPORT} {h} rdiff-backup server --restrict-mode read-only" backup --create-full-path --include ${JOB_INCLUDES} --exclude ${JOB_EXCLUDES} --exclude-if-present ${LMOUNTPOINT} --exclude-device-files --exclude-fifos ${RHOSTUSER}@${RHOSTFQDN}::/ ${RHOSTFQDN_INCREMENTS_DIR}
   then
     # rdiff-backup succeeded; log
     LEVEL="info" MESSAGE="Rdiff-Backup job finished with success." ozo-log
@@ -287,8 +287,9 @@ function ozo-program-loop {
       if ozo-mount-uuid
       then
         # UUID mounted, iterate through the jobs
-        for CONF in "$(ls ${LCONF_DIR}/*conf)"
+        for CONF in $(ls ${LCONF_DIR}/*conf)
         do
+          unset RHOSTUSER RHOSTFQDN RSSHPORT RHOST_INCLUDES RHOST_EXCLUDES
           source ${CONF}
           # validate the job
           if ozo-validate-job
@@ -343,12 +344,14 @@ function ozo-program-loop {
 EXIT=0
 
 LEVEL="info" MESSAGE="Rdiff-Backup starting." ozo-log
-if ozo-program-loop > /dev/null 2&>1
+#if ozo-program-loop
+if ozo-program-loop > /dev/null 2>&1
 then
   # run was successful
   LEVEL="info" MESSAGE="Rdiff-Backup finished with success." ozo-log
 else
   # run failed one or more jobs
+  unset RHOSTUSER RHOSTFQDN RSSHPORT RHOST_INCLUDES RHOST_EXCLUDES
   LEVEL="err" MESSAGE="Rdiff-Backup finished with errors." ozo-log
   EXIT=1
 fi
