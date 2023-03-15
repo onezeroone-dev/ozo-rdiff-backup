@@ -2,7 +2,7 @@
 
 This script automates the use of rdiff-backup to perform incremental backups of remote linux systems over SSH. It will mount a dedicated volume, generate an increment, perform increment maintenance, and unmount the volume.
 
-It runs with no arguments. When executed, it iterates through the *CONF* files in `LCONF_DIR` (`/etc/rdiff-backup.conf.d`) and performs the configured rdiff-backup job.
+It runs with no arguments. When executed, it iterates through the *CONF* files in `LCONF_DIR` (`/etc/ozo-rdiff-backup.conf.d`) and performs the configured rdiff-backup job.
 
 Please visit https://onezeroone.dev to learn more about this script and my other work.
 
