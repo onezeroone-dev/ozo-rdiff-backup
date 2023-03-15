@@ -1,4 +1,4 @@
-# rdiff-backup.sh
+# OZO Rdiff Backup
 
 This script automates the use of rdiff-backup to perform incremental backups of remote linux systems over SSH. It will mount a dedicated volume, generate an increment, perform increment maintenance, and unmount the volume.
 
