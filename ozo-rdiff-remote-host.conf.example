@@ -1,7 +1,7 @@
 # User
 RHOSTUSER="root"
 # Host
-RHOSTFQDN="rdiff-host.example.com"
+RHOSTFQDN="remote-system.example.com"
 # SSH Port
 RSSHPORT=22
 # Additional comma-separated inclusions e.g., "/srv/plex,/usr/lib/plexmediaserver"
