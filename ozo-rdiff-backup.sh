@@ -11,6 +11,7 @@ function ozo-log {
     # Description: Logs output to the system log
     # Arguments  :
     #   LEVEL    : The log level. Allowed values are "err", "info", or "warning". Defaults to "info".
+    #   MESSAGE  : The message to log.
     #   RHOSTFQDN: The fully-qualified domain name of the remote host.
 
     # Determine if LEVEL is null
