@@ -1,5 +1,5 @@
 # Set variables
-NAME="onezeroone-release"
+NAME="ozo-rdiff-backup"
 VERSION="1.0.0"
 ARCH="noarch"
 OSRELE="10"
@@ -8,7 +8,7 @@ VARTMP="/var/tmp"
 TMPDIR="$VARTMP/$NAME-$VERSION"
 SOURCESDIR="/srv/rpmbuild/SOURCES"
 SPECSDIR="/srv/rpmbuild/SPECS"
-SPECFILE="onezeroone-release.spec"
+SPECFILE="$NAME.spec"
 SPECPATH="$SPECSDIR/$SPECFILE"
 TARPATH="$SOURCESDIR/$NAME-$VERSION.tar.gz"
 RPMSPATH="/srv/rpmbuild/RPMS"
@@ -18,9 +18,10 @@ RPMPATH="$RPMSPATH/$ARCH/$NAME-$VERSION-$PKRELE.el$OSRELE.$ARCH.rpm"
 mkdir -p $TMPDIR
 
 # Copy in file assets
-cp onezeroone.repo $TMPDIR
-cp onezeroone-test.repo $TMPDIR
-cp RPM-GPG-KEY-ONEZEROONE $TMPDIR
+cp ozo-rdiff-backup $TMPDIR
+cp ozo-rdiff-backup.conf $TMPDIR
+cp ozo-rdiff-backup.sh $TMPDIR
+cp ozo-rdiff-remote-host.conf.example $TMPDIR
 
 # If the tarball exists
 if [[ -f $TARPATH ]]
