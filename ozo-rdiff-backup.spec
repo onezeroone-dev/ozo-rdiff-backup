@@ -1,5 +1,5 @@
 Name:      ozo-rdiff-backup
-Version:   1.0.0
+Version:   1.0.1
 Release:   1%{?dist}
 Summary:   Automates the use of rdiff-backup
 BuildArch: noarch
@@ -44,5 +44,7 @@ then
 fi
 
 %changelog
+* Sun Aug 03 2025 One Zero One RPM Manager <repositories@onezeroone.dev> - 1.0.1-1
+- Minor docstring update
 * Fri Feb 26 2021 One Zero One RPM Manager <repositories@onezeroone.dev> - 1.0.0-1
 - Initial release
