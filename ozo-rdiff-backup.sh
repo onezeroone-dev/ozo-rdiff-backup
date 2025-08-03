@@ -1,9 +1,10 @@
 #!/bin/bash
 # Script Name: ozo-rdiff-backup.sh
-# Version    : 1.0.0
+# Version    : 1.0.1
 # Description: This script automates the use of rdiff-backup to perform incremental backups of remote linux systems over SSH. It will mount a dedicated volume, generate an increment, perform increment maintenancce, and unmount the volume.
 # Usage      : /usr/sbin/ozo-rdiff-backup.sh
 # Author     : Andy Lievertz <alievertz@onezeroone.dev>
+# Link       : https://github.com/onezeroone-dev/ozo-rdiff-backup/blob/main/README.md
 
 # FUNCTIONS
 function ozo-log {
